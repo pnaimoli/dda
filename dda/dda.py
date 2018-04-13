@@ -49,17 +49,36 @@ class Game(object):
             # suits = range(5) Uncomment this when we're ready to introduce the Sumit suit
 
         for suit_index in suits:
+            last_card_played = None
             for (i, card) in enumerate(board.cards[board.next_to_play][suit_index]):
+                # Make sure we haven't already played a card of equal rank
+                if card - 1 == last_card_played:
+                    last_card_played = card
+                    continue
+                else:
+                    last_card_played = card
+
+                # Copy the board, remove this card, and advance our state
                 b = copy.deepcopy(board)
                 del b.cards[b.next_to_play][suit_index][i]
                 b.this_trick[b.next_to_play] = (card, suit_index)
                 b.next_to_play = (b.next_to_play + 1) % 4
+
                 if b.this_trick[b.next_to_play]:
                     # All 4 players have played.  Evaluate the round.
                     winner = cls.who_won(b)
-                    b.tricks[winner % 2] += 1
-                    b.this_trick = [None, None, None, None]
                     b.next_to_play = winner
+                    b.tricks[winner % 2] += 1
+
+                    # Compress the board downward
+                    cards_played = sorted(b.this_trick, reverse=True)
+                    for (card_played, suit_played) in cards_played:
+                        for player_holdings in b.cards:
+                            suit_holding = player_holdings[suit_played]
+                            for (i, remaining_card) in enumerate(suit_holding):
+                                if remaining_card > card_played:
+                                    suit_holding[i] -= 1
+                    b.this_trick = [None, None, None, None]
 
                 yield ((card, suit_index), b)
             
@@ -80,9 +99,10 @@ class Board(object):
         self.next_to_play = 0
         self.tricks = [0, 0]
         self.trump = trump
+        self.max_tricks = 0
         if hand_string:
             hand_string = hand_string.replace("10", "T")
-            hands = hand_string.split()
+            hands = hand_string.strip().split()
             if len(hands) != 4:
                 raise Exception("Board string must contain 4 hands separated "
                                 "by whitespace")
@@ -108,8 +128,27 @@ class Board(object):
                 for l in self.cards[player]:
                     l.sort()
 
-def alpha_beta(state, game, total_tricks=13, depth=0, alpha=-1, beta=14):
-#    print(" "*depth + str(state.__dict__))
+            # Sanity checks to make sure everything's well formed
+            number_of_cards = []
+            for hand in self.cards:
+                number_of_cards.append(sum([len(h) for h in hand]))
+            if len(set(number_of_cards)) != 1:
+                raise Exception("Board string must contain the same "
+                                "number of cards per hand")
+            self.max_tricks = number_of_cards[0]
+
+            # No duplicates
+            for suit_holdings in zip(*[p for p in self.cards]):
+                flattened = sum(suit_holdings, [])
+                if len(flattened) != len(set(flattened)):
+                    raise Exception("Board string must not contain duplicate "
+                                    "cards", flattened)
+
+def alpha_beta(state, game, total_tricks=None, depth=0, alpha=-1, beta=14):
+    print(" "*depth + str(state.__dict__))
+
+    if not total_tricks:
+        total_tricks = state.max_tricks
 
     if depth == total_tricks*4 or game.terminal_test(state):
         v = game.utility(state, 0)
