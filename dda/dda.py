@@ -5,14 +5,6 @@ signal.signal(signal.SIGPIPE, signal.SIG_DFL)
 
 class Game(object):
     @classmethod
-    def to_move(cls, board):
-        return board.next_to_play
-
-    @classmethod
-    def terminal_test(cls, board):
-        return board.tricks[0] + board.tricks[1] == 13
-
-    @classmethod
     def utility(cls, board, player):
         return board.tricks[player % 2]
 
@@ -145,12 +137,12 @@ class Board(object):
                                     "cards", flattened)
 
 def alpha_beta(state, game, total_tricks=None, depth=0, alpha=-1, beta=14):
-    print(" "*depth + str(state.__dict__))
+#    print(" "*depth + str(state.__dict__))
 
     if not total_tricks:
         total_tricks = state.max_tricks
 
-    if depth == total_tricks*4 or game.terminal_test(state):
+    if depth == total_tricks*4:
         v = game.utility(state, 0)
         return v
 
