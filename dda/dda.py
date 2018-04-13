@@ -107,19 +107,6 @@ class Board(object):
                             self.cards[player][suit].append(int(card))
                 for l in self.cards[player]:
                     l.sort()
-            
-
-#    @staticmethod
-#    def from_str(hand_str):
-#        pass
-#
-#    def __hash__():
-#        return 0
-#
-#    def __equal__():
-#        return False
-
-argmax = lambda iterable, func: max(iterable, key=func)
 
 def alpha_beta(state, game, total_tricks=13, depth=0, alpha=-1, beta=14):
 #    print(" "*depth + str(state.__dict__))
@@ -159,42 +146,3 @@ def alpha_beta(state, game, total_tricks=13, depth=0, alpha=-1, beta=14):
             if beta <= alpha:
                 break
         return v
-
-if __name__ == "__main__":
-
-#    b = Board()
-#    b.cards = (([14], [], [2], [4], []), # South
-#               ([], [], [14], [12, 13], [0]), # West
-#               ([], [], [13], [11, 14], []), # North
-#               ([], [], [10, 11, 12], [], [0])) # East
-#    tricks = alpha_beta(b, Game, total_tricks=3)
-#    print()
-#    print("Final: ", tricks)
-
-#    b = Board()
-#    b.cards = (([14], [], [2], [4], []), # South
-#               ([], [], [10, 11, 12], [], [0]), # West
-#               ([], [], [13], [11, 14], []), # North
-#               ([], [], [14], [12, 13], [0])) # East
-#    tricks = alpha_beta(b, Game, total_tricks=3)
-#    print()
-#    print("Final: ", tricks)
-
-#    b = Board()
-#    b.cards = (([1,5,14], [], [2], [4]),
-#               ([2,6], [], [14], [12, 13]),
-#               ([3,7], [], [13], [11, 14]),
-#               ([4,8], [], [10, 11, 12], []))
-#    tricks = alpha_beta(b, Game, total_tricks=5)
-#    print()
-#    print("Final: ", tricks)
-
-# https://www.larryco.com/bridge-learning-center/detail/524
-    b = Board()
-    b.cards = (([3,4,7,8,12], [8,11,13], [10,8], [7,11,13]),
-               ([6,9,14], [2,7,10,14], [13,14], [4,8,9,10]),
-               ([2,5,13], [3,4,6], [2,3,4,6,7], [2,5]),
-               ([10,11], [5,9,12], [5,8,11,12], [3,6,12,14]))
-    tricks = alpha_beta(b, Game, total_tricks=3)
-    print()
-    print("Final: ", tricks)
