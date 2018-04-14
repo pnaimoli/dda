@@ -18,6 +18,7 @@ class Game(object):
 
     @classmethod
     def who_won(cls, board):
+#        print("Who won?")
         suit_lead = board.this_trick[board.next_to_play][1]
         suit_priority = [0, 0, 0, 0, -1] # The Sumit suit can never win
         suit_priority[suit_lead] = 1
@@ -73,7 +74,16 @@ class Game(object):
                     b.this_trick = [None, None, None, None]
 
                 yield ((card, suit_index), b)
-            
+
+    @classmethod
+    def quick_tricks_on_lead(cls, board):
+        rotated = board.cards[board.next_to_play:] + \
+                  board.cards[:board.next_to_play]
+        # For each suit, how many of the top cards do we possess?
+        for suit_holdings in zip(*[p for p in rotated]):
+            pass
+
+        return 0
 
 class Board(object):
     """ The current state of a bridge game, which includes the number of
@@ -136,44 +146,90 @@ class Board(object):
                     raise Exception("Board string must not contain duplicate "
                                     "cards", flattened)
 
-def alpha_beta(state, game, total_tricks=None, depth=0, alpha=-1, beta=14):
+def alpha_beta(state, game, total_tricks=None, depth=0, alpha=0, beta=None):
 #    print(" "*depth + str(state.__dict__))
 
+    # If total_tricks was no specified, play out the whole hand
     if not total_tricks:
         total_tricks = state.max_tricks
 
+    if not beta:
+        beta = total_tricks
+
+    # If we've reached our terminal state, return the number of tricks
+    # taken by the opening leader
     if depth == total_tricks*4:
         v = game.utility(state, 0)
         return v
 
+    tricks_remaining = game.utility(state, 0) + game.utility(state, 1)
+    tricks_remaining = total_tricks - tricks_remaining
 
-    # If N/S is playing, we're trying to maximize the number of tricks
-    first_move_tested = False
+    # If we're on lead, compute the number of quick tricks our side can
+    # take
+    number_played_this_trick = sum([not not e for e in state.this_trick])
+    quick_tricks = 0
+    if number_played_this_trick == 0:
+        quick_tricks = game.quick_tricks_on_lead(state)
+        quick_tricks = min(tricks_remaining, quick_tricks)
+
+    # If the leading team is playing, we're trying to maximize the
+    # number of tricks
     if state.next_to_play % 2 == 0:
-        v = 0
+        # If the remaining tricks are all quick, we're done!
+        if quick_tricks == tricks_remaining:
+            return game.utility(state, 0) + quick_tricks
+
+        # Update alpha according to the number of quick tricks we are
+        # known to possess.
+        alpha = max(alpha, game.utility(state, 0) + quick_tricks)
+
+        # Update beta according to the number of tricks the other side
+        # has already taken
+        # TODO: does this line do anything?
+        beta = min(beta, total_tricks - game.utility(state, 1))
+
+        if alpha == beta:
+            return alpha
+        if alpha > beta:
+            # Is our quick tricks computation flawed?
+            raise Exception("WTF")
+
+        v = alpha
         for (a, s) in game.successors(state):
-            # If the defense has already taken too many tricks,
-            # this line of play is already inferior
-            upper_bound = total_tricks - game.utility(state, 1)
-            if upper_bound < alpha:
-                continue
-            
             v = max(v, alpha_beta(s, game, total_tricks, depth+1, alpha, beta))
             alpha = max(alpha, v)
-            if beta <= alpha:
-                break
+            if alpha == beta:
+                return alpha
+            if alpha > beta:
+                raise Exception("WTF")
         return v
     else:
-        v = 13
-        for (a, s) in game.successors(state):
-            # If the offense has already taken too many tricks,
-            # this line of play is already inferior
-            lower_bound = game.utility(state, 0)
-            if lower_bound > beta:
-                continue
+        # If the remaining tricks are all quick, we're done!
+        if quick_tricks == tricks_remaining:
+            return game.utility(state, 0)
 
+        # Update beta according to the number of quick tricks we are
+        # known to possess.
+        beta = min(beta, game.utility(state, 0) + tricks_remaining - quick_tricks)
+
+        # Update alpha according to the number of tricks the other side
+        # has already taken
+        # TODO: does this line do anything?
+        alpha = max(alpha, game.utility(state, 0))
+
+        if alpha == beta:
+            return alpha
+        if alpha > beta:
+            # Is our quick tricks computation flawed?
+            raise Exception("WTF")
+
+        v = beta
+        for (a, s) in game.successors(state):
             v = min(v, alpha_beta(s, game, total_tricks, depth+1, alpha, beta))
             beta = min(beta, v)
-            if beta <= alpha:
-                break
+            if alpha == beta:
+                return alpha
+            if alpha > beta:
+                raise Exception("WTF")
         return v

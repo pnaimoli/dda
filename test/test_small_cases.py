@@ -80,3 +80,9 @@ class SqueezeEndings(unittest.TestCase):
         b = dda.Board("2..5.2 ..234. .2..36 ..6.45")
         tricks = dda.alpha_beta(b, dda.Game)
         self.assertEqual(tricks, 3)
+
+    def test_fabpedigree(self):
+        #https://fabpedigree.com/james/dbldum.htm
+        b = dda.Board(".A2.K97.A T32.T.T.T AJ4..Q8.2 KQ.98.A2.")
+        tricks = dda.alpha_beta(b, dda.Game)
+        self.assertEqual(tricks, 5)
