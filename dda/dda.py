@@ -58,7 +58,7 @@ class Board(object):
 
     def copy(self, board):
         for i in range(len(self.cards)):
-            self.cards[i].frombytes(board.cards[i])
+            self.cards[i] = array.array('B', board.cards[i])
         self.this_trick = board.this_trick[:]
         self.current_suit = board.current_suit
         self.next_to_play = board.next_to_play
@@ -120,8 +120,7 @@ class Board(object):
                     suits = [self.current_suit]
                     break
             else:
-                suits = range(4)
-                # suits = range(5) Uncomment this when we're ready to introduce the Sumit suit
+                suits = range(5)
 
         for suit_index in suits:
             last_card_tried = None
@@ -173,51 +172,51 @@ def analyze_single_suit(card_array):
             cards_per_player[player] += 1
         smaller_hand = [0, 2][cards_per_player[0] > cards_per_player[2]]
 
-#            # Check to see if there's a top card in the smaller hand,
-#            # and if so play it!
-#            if all_hands[smaller_hand]:
-#                if all_hands[smaller_hand][-1] > opponents_top_card:
-#                    # TODO: should we overtake??
-#                    move = (all_hands[smaller_hand][-1],
-#                            all_hands[2-smaller_hand][0])
-#                    if smaller_hand == 2:
-#                        move = list(reversed(move))
-#                    moves.append(move)
-#                    for i in range(2):
-#                        if all_hands[2*i+1]:
-#                            all_hands[2*i+1].pop(0)
-#                    all_hands[smaller_hand].pop()
-#                    all_hands[2-smaller_hand].pop(0)
-#                    continue
-#                elif all_hands[2-smaller_hand][-1] > opponents_top_card:
-#                    move = (all_hands[smaller_hand][0],
-#                            all_hands[2-smaller_hand][-1])
-#                    if smaller_hand == 2:
-#                        move = list(reversed(move))
-#                    moves.append(move)
-#                    for i in range(2):
-#                        if all_hands[2*i+1]:
-#                            all_hands[2*i+1].pop(0)
-#                    all_hands[smaller_hand].pop(0)
-#                    all_hands[2-smaller_hand].pop()
-#                    continue
-#                else:
-#                    # else we have no top winners!
-#                    break
+#        # Check to see if there's a top card in the smaller hand,
+#        # and if so play it!
+#        if all_hands[smaller_hand]:
+#            if all_hands[smaller_hand][-1] > opponents_top_card:
+#                # TODO: should we overtake??
+#                move = (all_hands[smaller_hand][-1],
+#                        all_hands[2-smaller_hand][0])
+#                if smaller_hand == 2:
+#                    move = list(reversed(move))
+#                moves.append(move)
+#                for i in range(2):
+#                    if all_hands[2*i+1]:
+#                        all_hands[2*i+1].pop(0)
+#                all_hands[smaller_hand].pop()
+#                all_hands[2-smaller_hand].pop(0)
+#                continue
+#            elif all_hands[2-smaller_hand][-1] > opponents_top_card:
+#                move = (all_hands[smaller_hand][0],
+#                        all_hands[2-smaller_hand][-1])
+#                if smaller_hand == 2:
+#                    move = list(reversed(move))
+#                moves.append(move)
+#                for i in range(2):
+#                    if all_hands[2*i+1]:
+#                        all_hands[2*i+1].pop(0)
+#                all_hands[smaller_hand].pop(0)
+#                all_hands[2-smaller_hand].pop()
+#                continue
 #            else:
-#                # One hand is void! Any winners in the long hand?
-#                if all_hands[2-smaller_hand][-1] > opponents_top_card:
-#                    move = (None, all_hands[2-smaller_hand][0])
-#                    if smaller_hand == 2:
-#                        move = list(reversed(move))
-#                    moves.append(move)
-#                    for i in range(2):
-#                        if all_hands[2*i+1]:
-#                            all_hands[2*i+1].pop(0)
-#                    all_hands[2-smaller_hand].pop(0)
-#                    continue
 #                # else we have no top winners!
 #                break
+#        else:
+#            # One hand is void! Any winners in the long hand?
+#            if all_hands[2-smaller_hand][-1] > opponents_top_card:
+#                move = (None, all_hands[2-smaller_hand][0])
+#                if smaller_hand == 2:
+#                    move = list(reversed(move))
+#                moves.append(move)
+#                for i in range(2):
+#                    if all_hands[2*i+1]:
+#                        all_hands[2*i+1].pop(0)
+#                all_hands[2-smaller_hand].pop(0)
+#                continue
+#            # else we have no top winners!
+#            break
 
     return moves
 
