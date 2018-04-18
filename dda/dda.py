@@ -99,12 +99,13 @@ class Board(object):
         winner = self.who_won()
         self.next_to_play = winner
         self.tricks[winner % 2] += 1
-        self.this_trick = [None, None, None, None]
-        self.current_suit = None
 
         # Compress the board downward
-        for suit in range(len(self.cards)):
-            self.compress(suit)
+        for (card, suit) in sorted(self.this_trick, reverse=True):
+            self.cards[suit].pop(card)
+
+        self.this_trick = [None, None, None, None]
+        self.current_suit = None
 
     def successors(self):
         # My next card can be anything if we're on lead or if we can't follow
