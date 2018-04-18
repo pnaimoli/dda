@@ -18,7 +18,6 @@ class Game(object):
 
     @classmethod
     def who_won(cls, board):
-#        print("Who won?")
         suit_lead = board.this_trick[board.next_to_play][1]
         suit_priority = [0, 0, 0, 0, -1] # The Sumit suit can never win
         suit_priority[suit_lead] = 1
@@ -76,14 +75,89 @@ class Game(object):
                 yield ((card, suit_index), b)
 
     @classmethod
+    def analyze_single_suit(cls, all_hands):
+        """
+        """
+        moves = []
+        while True:
+            top_card = max(sum(all_hands, []), default=-1)
+            opponents_top_card = max(all_hands[1] + all_hands[3], default=-1)
+
+            if opponents_top_card >= top_card:
+                return moves
+
+            smaller_hand = [0, 2][all_hands[0] > all_hands[2]]
+
+            # Check to see if there's a top card in the smaller hand,
+            # and if so play it!
+            if all_hands[smaller_hand]:
+                if all_hands[smaller_hand][-1] > opponents_top_card:
+                    # TODO: should we overtake??
+                    move = (all_hands[smaller_hand][-1],
+                            all_hands[2-smaller_hand][0])
+                    if smaller_hand == 2:
+                        move = list(reversed(move))
+                    moves.append(move)
+                    for i in range(2):
+                        if all_hands[2*i+1]:
+                            all_hands[2*i+1].pop(0)
+                    all_hands[smaller_hand].pop()
+                    all_hands[2-smaller_hand].pop(0)
+                    continue
+                elif all_hands[2-smaller_hand][-1] > opponents_top_card:
+                    move = (all_hands[smaller_hand][0],
+                            all_hands[2-smaller_hand][-1])
+                    if smaller_hand == 2:
+                        move = list(reversed(move))
+                    moves.append(move)
+                    for i in range(2):
+                        if all_hands[2*i+1]:
+                            all_hands[2*i+1].pop(0)
+                    all_hands[smaller_hand].pop(0)
+                    all_hands[2-smaller_hand].pop()
+                    continue
+                else:
+                    # else we have no top winners!
+                    break
+            else:
+                # One hand is void! Any winners in the long hand?
+                if all_hands[2-smaller_hand][-1] > opponents_top_card:
+                    move = (None, all_hands[2-smaller_hand][0])
+                    if smaller_hand == 2:
+                        move = list(reversed(move))
+                    moves.append(move)
+                    for i in range(2):
+                        if all_hands[2*i+1]:
+                            all_hands[2*i+1].pop(0)
+                    all_hands[2-smaller_hand].pop(0)
+                    continue
+                # else we have no top winners!
+                break
+
+        return moves
+
+
+    @classmethod
     def quick_tricks_on_lead(cls, board):
+        # TODO: deal with trumps!
+        if board.trump:
+            return 0
+
         rotated = board.cards[board.next_to_play:] + \
                   board.cards[:board.next_to_play]
-        # For each suit, how many of the top cards do we possess?
-        for suit_holdings in zip(*[p for p in rotated]):
-            pass
+        rotated = copy.deepcopy(rotated)
 
-        return 0
+        quick_trick_moves = map(cls.analyze_single_suit,
+                                zip(*[p for p in rotated]))
+
+        # For now, don't worry about entries
+        quick_tricks = 0
+        for moves in quick_trick_moves:
+            for move in moves:
+                if move[0] and move[1]:
+                    quick_tricks += 1
+#        print("QT: " + str(quick_tricks) + ", " + str(board.__dict__))
+        return quick_tricks
 
 class Board(object):
     """ The current state of a bridge game, which includes the number of
@@ -147,7 +221,7 @@ class Board(object):
                                     "cards", flattened)
 
 def alpha_beta(state, game, total_tricks=None, depth=0, alpha=0, beta=None):
-#    print(" "*depth + str(state.__dict__))
+#    print(" "*depth + "A:" + str(alpha) + ",B:" + str(beta) + " " + str(state.__dict__))
 
     # If total_tricks was no specified, play out the whole hand
     if not total_tricks:
@@ -192,8 +266,9 @@ def alpha_beta(state, game, total_tricks=None, depth=0, alpha=0, beta=None):
         if alpha == beta:
             return alpha
         if alpha > beta:
-            # Is our quick tricks computation flawed?
-            raise Exception("WTF")
+            # I don't remember why this could happen, but it shouldn't
+            # matter if we return alpha or beta, right?
+            return beta
 
         v = alpha
         for (a, s) in game.successors(state):
@@ -202,7 +277,9 @@ def alpha_beta(state, game, total_tricks=None, depth=0, alpha=0, beta=None):
             if alpha == beta:
                 return alpha
             if alpha > beta:
-                raise Exception("WTF")
+                # I don't remember why this could happen, but it shouldn't
+                # matter if we return alpha or beta, right?
+                return beta
         return v
     else:
         # If the remaining tricks are all quick, we're done!
@@ -221,8 +298,9 @@ def alpha_beta(state, game, total_tricks=None, depth=0, alpha=0, beta=None):
         if alpha == beta:
             return alpha
         if alpha > beta:
-            # Is our quick tricks computation flawed?
-            raise Exception("WTF")
+            # I don't remember why this could happen, but it shouldn't
+            # matter if we return alpha or beta, right?
+            return beta
 
         v = beta
         for (a, s) in game.successors(state):
@@ -231,5 +309,7 @@ def alpha_beta(state, game, total_tricks=None, depth=0, alpha=0, beta=None):
             if alpha == beta:
                 return alpha
             if alpha > beta:
-                raise Exception("WTF")
+                # I don't remember why this could happen, but it shouldn't
+                # matter if we return alpha or beta, right?
+                return beta
         return v

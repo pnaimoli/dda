@@ -20,5 +20,6 @@ class FullDeals(unittest.TestCase):
                       "2.QT87.876.87654 "
                       ".AKJ965.543.AQJ9"
                       )
+        # TODO: trump?!?
         tricks = dda.alpha_beta(b, dda.Game, beta=1)
         self.assertEqual(tricks, 0)
