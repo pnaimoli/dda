@@ -10,7 +10,7 @@ class FullDeals(unittest.TestCase):
                       "25K.346.23467.25 "
                       "TJ.59Q.59JQ.36QA"
                       )
-        tricks = dda.alpha_beta(b, dda.Game)
+        tricks = dda.alpha_beta(b)
         self.assertEqual(tricks, 4)
 
     def test_fabpedigree(self):
@@ -18,8 +18,8 @@ class FullDeals(unittest.TestCase):
         b = dda.Board("QJT98.4.QJT9.KT2 "
                       "AK76543.32.AK2.3 "
                       "2.QT87.876.87654 "
-                      ".AKJ965.543.AQJ9"
+                      ".AKJ965.543.AQJ9",
+                      trump=1
                       )
-        # TODO: trump?!?
-        tricks = dda.alpha_beta(b, dda.Game, beta=1)
+        tricks = dda.alpha_beta(b)
         self.assertEqual(tricks, 0)
