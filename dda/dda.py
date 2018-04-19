@@ -163,70 +163,76 @@ def analyze_single_suit(card_array):
     """
     moves = []
     while True:
+#        print("Analyzing: " + str(card_array))
         if not card_array:
             return moves
 
-        top_card = card_array[-1]
-        for (card, player) in reversed(list(enumerate(card_array))):
-            if player % 2 == 1:
-                opponents_top_card = card
-                break
-        else:
-            opponents_top_card = -1
+        top_card = -1
+        top_card_per_player = [-1]*NUM_PLAYERS
+        smallest_card_per_player = [None]*NUM_PLAYERS
+        cards_per_player = [0]*NUM_PLAYERS
+        for (card, player) in enumerate(card_array):
+            if player >= NUM_PLAYERS:
+                continue
+            cards_per_player[player] += 1
+            if card > top_card_per_player[player]:
+                top_card_per_player[player] = card
+            if not smallest_card_per_player[player] or \
+                card < smallest_card_per_player[player]:
+                smallest_card_per_player[player] = card
+            if card > top_card:
+                top_card = card
 
+        if top_card < 0:
+            return moves
+
+        opponents_top_card = max(top_card_per_player[1], top_card_per_player[3])
         if opponents_top_card >= top_card:
             return moves
 
-        cards_per_player = [0]*NUM_PLAYERS
-        for (card, player) in enumerate(card_array):
-            cards_per_player[player] += 1
         smaller_hand = [0, 2][cards_per_player[0] > cards_per_player[2]]
+#        print(smaller_hand, top_card_per_player, smallest_card_per_player)
 
-#        # Check to see if there's a top card in the smaller hand,
-#        # and if so play it!
-#        if all_hands[smaller_hand]:
-#            if all_hands[smaller_hand][-1] > opponents_top_card:
-#                # TODO: should we overtake??
-#                move = (all_hands[smaller_hand][-1],
-#                        all_hands[2-smaller_hand][0])
-#                if smaller_hand == 2:
-#                    move = list(reversed(move))
-#                moves.append(move)
-#                for i in range(2):
-#                    if all_hands[2*i+1]:
-#                        all_hands[2*i+1].pop(0)
-#                all_hands[smaller_hand].pop()
-#                all_hands[2-smaller_hand].pop(0)
-#                continue
-#            elif all_hands[2-smaller_hand][-1] > opponents_top_card:
-#                move = (all_hands[smaller_hand][0],
-#                        all_hands[2-smaller_hand][-1])
-#                if smaller_hand == 2:
-#                    move = list(reversed(move))
-#                moves.append(move)
-#                for i in range(2):
-#                    if all_hands[2*i+1]:
-#                        all_hands[2*i+1].pop(0)
-#                all_hands[smaller_hand].pop(0)
-#                all_hands[2-smaller_hand].pop()
-#                continue
-#            else:
-#                # else we have no top winners!
-#                break
-#        else:
-#            # One hand is void! Any winners in the long hand?
-#            if all_hands[2-smaller_hand][-1] > opponents_top_card:
-#                move = (None, all_hands[2-smaller_hand][0])
-#                if smaller_hand == 2:
-#                    move = list(reversed(move))
-#                moves.append(move)
-#                for i in range(2):
-#                    if all_hands[2*i+1]:
-#                        all_hands[2*i+1].pop(0)
-#                all_hands[2-smaller_hand].pop(0)
-#                continue
-#            # else we have no top winners!
-#            break
+        # Check to see if there's a top card in the smaller hand,
+        # and if so play it!
+        if top_card_per_player[smaller_hand] > opponents_top_card:
+            # TODO: should we overtake??
+            if smaller_hand == 0:
+                move = (top_card_per_player[0],
+                        smallest_card_per_player[2])
+            else:
+                move = (smallest_card_per_player[0],
+                        top_card_per_player[2])
+
+            moves.append(move)
+
+            # "play" the cards
+            for player in range(NUM_PLAYERS):
+                if player == smaller_hand:
+                    card_array[top_card_per_player[player]] = NUM_PLAYERS
+                elif smallest_card_per_player[player] != None:
+                    card_array[smallest_card_per_player[player]] = NUM_PLAYERS
+
+            continue
+        else:
+            # TODO: should we overtake??
+            if smaller_hand == 0:
+                move = (smallest_card_per_player[0],
+                        top_card_per_player[2])
+            else:
+                move = (top_card_per_player[0],
+                        smallest_card_per_player[2])
+
+            moves.append(move)
+
+            # "play" the cards
+            for player in range(NUM_PLAYERS):
+                if player == 2 - smaller_hand:
+                    card_array[top_card_per_player[player]] = NUM_PLAYERS
+                elif smallest_card_per_player[player] != None:
+                    card_array[smallest_card_per_player[player]] = NUM_PLAYERS
+
+            continue
 
     return moves
 
@@ -234,26 +240,25 @@ def quick_tricks_on_lead(board):
     # TODO: deal with trumps!
     if board.trump:
         return 0
-    else:
-        return 0
 
     # Make a copy of each card array because analyze_single_suit will
     # muck with the contents
     rotated_cards = []
     for card_array in board.cards[:4]:
         rotated_cards.append(array.array('B', card_array))
-        for card in rotated_cards[-1]:
-            card = card - board.next_to_play % 4
+        for (rank, player) in enumerate(rotated_cards[-1]):
+            rotated_cards[-1][rank] = (player - board.next_to_play) % 4
 
-    quick_trick_moves = map(analyze_single_suit, rotated_cards)
+    quick_trick_moves = list(map(analyze_single_suit, rotated_cards))
 
     # For now, don't worry about entries
     quick_tricks = 0
     for moves in quick_trick_moves:
         for move in moves:
-            if move[0] and move[1]:
+            if move[0] != None:
                 quick_tricks += 1
 #    print("QT: " + str(quick_tricks) + ", " + str(board.__dict__))
+#    print(quick_trick_moves)
     return quick_tricks
 
 
