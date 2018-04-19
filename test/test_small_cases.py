@@ -86,3 +86,40 @@ class SqueezeEndings(unittest.TestCase):
         b = dda.Board(".A2.K97.A T32.T.T.T AJ4..Q8.2 KQ.98.A2.")
         tricks = dda.alpha_beta(b)
         self.assertEqual(tricks, 5)
+
+    def test_guard_squeezes(self):
+        #http://www.bridgeguys.com/squeeze/guard_squeeze.html
+        b = dda.Board("A...KT3 .A.A.Q6 .K.K.A7 4...J54")
+        tricks = dda.alpha_beta(b)
+        self.assertEqual(tricks, 4)
+
+    def test_strip_and_duck(self):
+        #https://www.lajollabridge.com/French/misc/Squeeze-Refresher.pdf
+        b = dda.Board("AK.xx.xx. .KQJ.KQ.x x.ATx.AJ. xx.xx..xx")
+        tricks = dda.alpha_beta(b)
+        self.assertEqual(tricks, 5)
+
+    def test_three_suit_strip(self):
+        # https://www.lajollabridge.com/French/misc/Squeeze-Refresher.pdf
+        # Page 31, they are wrong
+
+        # We should only be able to take our 2 aces
+        b = dda.Board(".Tx.xx.Qx .Q.KQx.KJ .x.AJ.Axx ..Txx.Txx")
+        tricks = dda.alpha_beta(b)
+        self.assertEqual(tricks, 2)
+
+        # We can endplay W
+        b = dda.Board("A.T.xx.Qx .Q.KQx.KJ x..AJ.Axx ..Txx.Txx")
+        b.next_to_play = 1
+        tricks = dda.alpha_beta(b)
+        self.assertEqual(tricks, 4)
+
+        # They say this shouldn't work, but it does if you play a heart first
+        b = dda.Board("A.Tx.xx.Qx .QJ.KQx.KJ x.x.AJ.Axx ..Txxx.Txx")
+        tricks = dda.alpha_beta(b)
+        self.assertEqual(tricks, 4)
+
+        # This should work too, as they promise
+        b = dda.Board("A.Tx.xx.Ax .QJ.KQx.KJ x.x.AJ.Qxx ..Txxx.Txx")
+        tricks = dda.alpha_beta(b)
+        self.assertEqual(tricks, 4)

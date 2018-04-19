@@ -36,6 +36,9 @@ class Board(object):
                                     "by .'s")
                 for (suit, holding) in enumerate(holdings):
                     for card in holding:
+                        if card.upper() == 'X':
+                            self.add_spot(suit, player)
+                            continue
                         if card in HONOR_MAP:
                             rank = HONOR_MAP.get(card.upper())
                         else:
@@ -73,6 +76,13 @@ class Board(object):
             raise Exception("Somebody already owns the {} ({})".format(
                             rank, self.cards[suit]))
         self.cards[suit][rank] = player
+
+    def add_spot(self, suit, player):
+        for rank in range(len(self.cards[suit])):
+            if self.cards[suit][rank] == NUM_PLAYERS:
+                self.cards[suit][rank] = player
+                return
+        self.cards[suit].append(player)
 
     def compress(self, suit):
         i = 0
