@@ -1,11 +1,19 @@
 #include "dda.h"
 
-DDAnalyzer::DDAnalyzer(const std::string & hand_string, int trump)
+DDAnalyzer::DDAnalyzer(const std::string & hand_string) :
+    DDAnalyzer(hand_string, -1)
 {
 }
 
-int DDAnalyzer::analyze(int total_tricks/* = 0*/)
+DDAnalyzer::DDAnalyzer(const std::string & hand_string, int trump) :
+    trump(trump)
 {
+    printf("%s\n", hand_string.c_str());
+}
+
+int DDAnalyzer::analyze(int _total_tricks/* = 0*/)
+{
+    total_tricks = _total_tricks;
     return 0;
 }
 

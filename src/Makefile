@@ -1,9 +1,8 @@
 CC=g++
-CC_FLAGS= -O3 -std=c++11 -Wall
+CC_FLAGS= -O3 -std=c++11 -Wall -Wshadow -Werror
 SRCS:=$(shell find *.cc)
 OBJS:= $(SRCS:%.cc=%.o)
-INC_DIRS=-I../pybind11/include -I/System/Library/Frameworks/Python.framework/Headers
-LIB_DIRS=-L/System/Library/Frameworks/Python.framework/
+INC_DIRS=-isystem../pybind11/include
 TARGET=libdda.so
 
 all: $(TARGET)
@@ -11,10 +10,10 @@ all: $(TARGET)
 full: clean all
 
 %.o : %.cc %.h
-	$(CC) $(CC_FLAGS) $(INC_DIRS) -c $<
+	$(CC) $(CC_FLAGS) $(shell python3-config --include) $(INC_DIRS) -c $<
 
 $(TARGET): $(OBJS)
-	$(CC) $(LIB_DIRS) -lPython -dynamiclib -o $(TARGET) $^
+	$(CC) $(shell python3-config --ldflags) -dynamiclib -o $(TARGET) $^
 
 clean:
 	rm -f *.o $(TARGET)
