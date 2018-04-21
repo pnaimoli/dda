@@ -12,13 +12,13 @@ class OneCardEndings(unittest.TestCase):
         dda = libdda.DDAnalyzer("2... .3.. .5.. .4..")
         tricks = dda.analyze()
         self.assertEqual(tricks, 1)
-        dda = libdda.DDAnalyzer("2... .3.. .5.. .4..", trump=0)
+        dda = libdda.DDAnalyzer("2... .3.. .5.. .4..", 0)
         tricks = dda.analyze()
         self.assertEqual(tricks, 1)
-        dda = libdda.DDAnalyzer("2... .3.. .4.. .5..", trump=1)
+        dda = libdda.DDAnalyzer("2... .3.. .4.. .5..", 1)
         tricks = dda.analyze()
         self.assertEqual(tricks, 0)
-        dda = libdda.DDAnalyzer("2... .3.. .5.. .4..", trump=1)
+        dda = libdda.DDAnalyzer("2... .3.. .5.. .4..", 1)
         tricks = dda.analyze()
         self.assertEqual(tricks, 1)
 
@@ -47,10 +47,10 @@ class TwoCardEndings(unittest.TestCase):
         dda = libdda.DDAnalyzer("2.2.. 3.3.. 5.4.. 4.5..")
         tricks = dda.analyze()
         self.assertEqual(tricks, 1)
-        dda = libdda.DDAnalyzer("23... 4.3.. 6.4.. 5.5..", trump=1)
+        dda = libdda.DDAnalyzer("23... 4.3.. 6.4.. 5.5..", 1)
         tricks = dda.analyze()
         self.assertEqual(tricks, 1)
-        dda = libdda.DDAnalyzer("24... 57... 68... .23..", trump=1)
+        dda = libdda.DDAnalyzer("24... 57... 68... .23..", 1)
         tricks = dda.analyze()
         self.assertEqual(tricks, 0)
 
@@ -67,7 +67,7 @@ class SqueezeEndings(unittest.TestCase):
         self.assertEqual(tricks, 2)
 
         # Positional simple squeeze shouldn't work when there's an extra loser
-        dda = libdda.DDAnalyzer("2.2.2.2 .3.7.45 .4.6.36 .5.345.")
+        dda = libdda.DDAnalyzer("2.2.2.2 .3.A.KQ .4.K.JA .5.345.")
         tricks = dda.analyze()
         self.assertEqual(tricks, 2)
 
@@ -110,7 +110,6 @@ class SqueezeEndings(unittest.TestCase):
 
         # We can endplay W
         dda = libdda.DDAnalyzer("A.T.xx.Qx .Q.KQx.KJ x..AJ.Axx ..Txx.Txx")
-        b.next_to_play = 1
         tricks = dda.analyze()
         self.assertEqual(tricks, 4)
 

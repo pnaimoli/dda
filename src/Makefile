@@ -1,5 +1,5 @@
 CC=g++
-CC_FLAGS= -O3 -std=c++11 -Wall -Wshadow -Werror
+CC_FLAGS= -O3 -std=c++1z -Wall -Wshadow -Werror
 SRCS:=$(shell find *.cc)
 OBJS:= $(SRCS:%.cc=%.o)
 INC_DIRS=-isystem../pybind11/include
