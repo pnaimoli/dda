@@ -94,6 +94,16 @@ void Hand::remove_card(int suit, int rank)
     cards[suit] &= uint16_t(-1) - (1 << rank);
 }
 
+void Hand::shift_cards_down(int suit, int rank)
+{
+    uint16_t & c = cards[suit];
+    if (c < (1 << rank))
+        return;
+    uint16_t smaller_cards = c & ((1 << rank) - 1);
+    uint16_t larger_cards = (c - smaller_cards) >> 1;
+    c = larger_cards | smaller_cards;
+}
+
 void Hand::remove_suit(int suit)
 {
     cards[suit] = 0;
@@ -104,6 +114,25 @@ void Hand::keep_only_suit(int suit_to_keep)
     for (int suit = 0; suit < NUM_SUITS; ++suit)
         if (suit != suit_to_keep)
             cards[suit] = 0;
+}
+
+void Hand::remove_adjacents(int suit)
+{
+    if (cards[suit] == 0)
+        return;
+    bool in_block = contains(suit, 0);
+    for (int rank = 1; rank < 16; ++rank)
+    {
+        if (!in_block)
+        {
+            in_block = contains(suit, rank);
+            continue;
+        }
+
+        in_block = contains(suit, rank);
+        if (in_block)
+            remove_card(suit, rank);
+    }
 }
 
 std::ostream & operator<<(std::ostream & os, const Hand & hand)
@@ -137,6 +166,26 @@ std::ostream & operator<<(std::ostream & os, const TrickState & ts)
     os << " To Play: " << ts.next_to_play;
     os << " Tricks Won: (" << ts.tricks_won << "," << ts.opp_tricks_won << ")";
     return os;
+}
+
+void TrickState::compress()
+{
+    for (int suit = 0; suit < NUM_SUITS; ++suit)
+    {
+        int rank = 2;
+        for (int i = 0; i < std::size(RANK_NAMES); ++i)
+        {
+            bool present = false;
+            for (int player = 0; player < NUM_PLAYERS; ++player)
+                present |= holdings[player].contains(suit, rank);
+            if (present) {
+                ++rank;
+                continue;
+            }
+            for (int player = 0; player < NUM_PLAYERS; ++player)
+                holdings[player].shift_cards_down(suit, rank);
+        }
+    }
 }
 
 DDAnalyzer::DDAnalyzer(const std::string & hand_string) :
@@ -192,6 +241,8 @@ DDAnalyzer::DDAnalyzer(const std::string & hand_string, int trump) :
             }
         }
     }
+
+    trick_states[0].compress();
 }
 
 int DDAnalyzer::analyze(int _total_tricks/* = 0*/)
@@ -248,7 +299,6 @@ int DDAnalyzer::alpha_beta(int alpha, int beta, int depth)
         return alpha;
     } else
     {
-        compute_legal_moves(depth);
         int v = beta;
         for (int suit = 0; suit < NUM_SUITS; ++suit)
         {
@@ -263,6 +313,7 @@ int DDAnalyzer::alpha_beta(int alpha, int beta, int depth)
                 beta = std::min(beta, v);
                 if (alpha == beta)
                 {
+                    return alpha;
                 }
                 if (alpha > beta)
                     return beta;
@@ -282,9 +333,17 @@ void DDAnalyzer::compute_legal_moves(int depth)
     {
         // Cannot lead the Sumit suit!
         lm.remove_suit(4);
+        for (int suit = 0; suit < NUM_SUITS; ++suit)
+            lm.remove_adjacents(suit);
     } else if (!lm.empty(ts.current_suit))
     {
+        // We can follow suit
         lm.keep_only_suit(ts.current_suit);
+        lm.remove_adjacents(ts.current_suit);
+    } else {
+        // We pitch
+        for (int suit = 0; suit < NUM_SUITS; ++suit)
+            lm.remove_adjacents(suit);
     }
 }
 
@@ -325,11 +384,7 @@ void DDAnalyzer::play_card(int depth, int suit, int rank)
 
         TrickState & next_ts = trick_states.at(tsx+1);
         for (int player = 0; player < NUM_PLAYERS; ++player)
-        {
             next_ts.holdings[player] = ts.holdings[player];
-            next_ts.legal_moves[player] = ts.legal_moves[player];
-            next_ts.played[player][0] = next_ts.played[player][1] = 0;
-        }
         next_ts.current_suit = -1;
         next_ts.next_to_play = winner;
         if (winner % 2 == 0)
@@ -340,6 +395,24 @@ void DDAnalyzer::play_card(int depth, int suit, int rank)
         {
             next_ts.tricks_won = ts.tricks_won;
             next_ts.opp_tricks_won = ts.opp_tricks_won + 1;
+        }
+
+        // Compress the board downward.  We start on the highest cards first
+        // so we don't double (triple! etc) compress.
+        std::array<int, 4> idx = {{0, 1, 2, 3}};
+        std::sort(idx.rbegin(), idx.rend(),
+             [&ts](int i1, int i2)
+                 { return ts.played[i1][0] < ts.played[i2][0];});
+
+        for (int played_idx : idx)
+        {
+            const int rank_to_remove = ts.played[played_idx][0];
+            const int suit_to_remove = ts.played[played_idx][1];
+            for (int player = 0; player < NUM_PLAYERS; ++player)
+            {
+                Hand & hand = next_ts.holdings[player];
+                hand.shift_cards_down(suit_to_remove, rank_to_remove);
+            }
         }
     }
 }

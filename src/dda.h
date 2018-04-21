@@ -17,8 +17,10 @@ struct Hand
     bool contains(int suit, int rank) const;
     void add_card(int suit, int rank);
     void remove_card(int suit, int rank);
+    void shift_cards_down(int suit, int rank);
     void remove_suit(int suit);
     void keep_only_suit(int suit);
+    void remove_adjacents(int suit);
 
     friend std::ostream & operator<<(std::ostream &, const Hand &);
 };
@@ -32,6 +34,8 @@ struct TrickState
     int next_to_play = 0;
     int tricks_won = 0;
     int opp_tricks_won = 0;
+
+    void compress();
 
     friend std::ostream & operator<<(std::ostream &, const Hand &);
 };
