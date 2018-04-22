@@ -146,6 +146,13 @@ bool Hand::operator !=(const Hand & ts) const
     return !operator==(ts);
 }
 
+size_t Hand::hash_value() const
+{
+    size_t seed = cards[SUMIT_SUIT];
+    boost::hash_combine(seed, *((uint64_t*)cards));
+    return seed;
+}
+
 std::ostream & operator<<(std::ostream & os, const Hand & hand)
 {
     for (int suit = 0; suit < NUM_SUITS; ++suit)
@@ -223,45 +230,10 @@ std::ostream & operator<<(std::ostream & os, const TrickState & ts)
     os << " Played:";
     for (auto card : ts.played)
         os << " (" << card[0] << "," << card[1] << ")";
-    os << " Suit: " << ts.current_suit;
     os << " To Play: " << ts.next_to_play;
+    os << " Suit: " << ts.current_suit;
     os << " Tricks Won: (" << ts.tricks_won << "," << ts.opp_tricks_won << ")";
     return os;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-// TranspositionTable
-////////////////////////////////////////////////////////////////////////////////
-
-void TranspositionTable::insert(const TrickState & ts, int value)
-{
-    CachedInfo ci;
-    ci.value = value;
-    tt.emplace(ts, ci);
-}
-
-const TranspositionTable::CachedInfo *
-TranspositionTable::find(const TrickState & ts) const
-{
-    auto it = tt.find(ts);
-    if (it == tt.end())
-        return nullptr;
-    else
-        return &it->second;
-}
-
-size_t TranspositionTable::TSHasher::operator()(const TrickState & obj) const
-{
-    size_t hash = 0;
-    for (const Hand & h : obj.holdings)
-    {
-        for (const uint16_t cards : h.cards)
-        {
-            hash += cards;
-        }
-    }
-    hash *= (obj.next_to_play + 1);
-    return hash;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -313,28 +285,23 @@ DDAnalyzer::DDAnalyzer(const std::string & hand_string, int trump) :
         }
     }
 
+    total_tricks = trick_states[0].holdings[0].length();
+    for (const Hand & hand : trick_states[0].holdings)
+        total_tricks = std::min(total_tricks, hand.length());
+    trick_states.resize(total_tricks + 1);
+    max_depth = total_tricks * NUM_PLAYERS;
+
     trick_states[0].compress();
 }
 
 DDAnalyzer::~DDAnalyzer()
 {
     std::cout << "Stats=ab_calls=" << stats.ab_calls <<
-                 "=tt_size=" << tt.size() <<
                  std::endl;
 }
 
 int DDAnalyzer::analyze(int _total_tricks/* = 0*/)
 {
-    total_tricks = _total_tricks;
-    if (total_tricks <= 0) {
-        total_tricks = 13;
-        for (const Hand & hand : trick_states[0].holdings)
-        {
-            total_tricks = std::min(total_tricks, hand.length());
-        }
-    }
-    trick_states.resize(total_tricks + 1);
-    max_depth = total_tricks * NUM_PLAYERS;
     return alpha_beta(0, total_tricks);
 }
 
@@ -344,16 +311,6 @@ int DDAnalyzer::alpha_beta(int alpha, int beta)
 
     const int tsx = depth / NUM_PLAYERS;
     TrickState & ts = trick_states.at(tsx);
-
-    // Check out transposition table here
-    if (ts.current_suit < 0)
-    {
-        const TranspositionTable::CachedInfo * ci = tt.find(ts);
-        if (ci != nullptr)
-        {
-            return ci->value;
-        }
-    }
 
     compute_legal_moves();
 //    std::cout << std::string(depth, ' ') <<
@@ -397,8 +354,6 @@ int DDAnalyzer::alpha_beta(int alpha, int beta)
                 undo_play();
             }
         }
-        if (ts.current_suit < 0)
-            tt.insert(ts, alpha);
         return alpha;
     } else
     {
@@ -414,8 +369,6 @@ int DDAnalyzer::alpha_beta(int alpha, int beta)
                 undo_play();
             }
         }
-        if (ts.current_suit < 0)
-            tt.insert(ts, beta);
         return beta;
     }
 }
