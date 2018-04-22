@@ -262,16 +262,16 @@ int DDAnalyzer::analyze(int _total_tricks/* = 0*/)
     }
     trick_states.resize(total_tricks + 1);
     max_depth = total_tricks * NUM_PLAYERS;
-    return alpha_beta(0, total_tricks, 0);
+    return alpha_beta(0, total_tricks);
 }
 
-int DDAnalyzer::alpha_beta(int alpha, int beta, int depth)
+int DDAnalyzer::alpha_beta(int alpha, int beta)
 {
     stats.ab_calls++;
 
     const int tsx = depth / NUM_PLAYERS;
     TrickState & ts = trick_states.at(tsx);
-    compute_legal_moves(depth);
+    compute_legal_moves();
 //    std::cout << std::string(depth, ' ') <<
 //        "A:" << alpha << " B:" << beta << " " << ts << std::endl;
 
@@ -287,7 +287,7 @@ int DDAnalyzer::alpha_beta(int alpha, int beta, int depth)
     int quick_tricks[2] = {0, 0};
     if (ts.current_suit < 0)
     {
-        quick_tricks[side] = quick_tricks_on_lead(depth);
+        quick_tricks[side] = quick_tricks_on_lead();
         quick_tricks[side] = std::min(tricks_remaining, quick_tricks[side]);
     }
 
@@ -308,9 +308,9 @@ int DDAnalyzer::alpha_beta(int alpha, int beta, int depth)
                 int rank = ts.legal_moves[ts.next_to_play].highest(suit);
                 if (rank < 0)
                     break;
-                play_card(depth, suit, rank);
-                alpha = std::max(alpha, alpha_beta(alpha, beta, depth+1));
-                undo_play(depth);
+                play_card(suit, rank);
+                alpha = std::max(alpha, alpha_beta(alpha, beta));
+                undo_play();
             }
         }
         return alpha;
@@ -323,16 +323,16 @@ int DDAnalyzer::alpha_beta(int alpha, int beta, int depth)
                 int rank = ts.legal_moves[ts.next_to_play].highest(suit);
                 if (rank < 0)
                     break;
-                play_card(depth, suit, rank);
-                beta = std::min(beta, alpha_beta(alpha, beta, depth+1));
-                undo_play(depth);
+                play_card(suit, rank);
+                beta = std::min(beta, alpha_beta(alpha, beta));
+                undo_play();
             }
         }
         return beta;
     }
 }
 
-void DDAnalyzer::compute_legal_moves(int depth)
+void DDAnalyzer::compute_legal_moves()
 {
     const int tsx = depth / NUM_PLAYERS;
     TrickState & ts = trick_states.at(tsx);
@@ -356,10 +356,14 @@ void DDAnalyzer::compute_legal_moves(int depth)
     }
 }
 
-void DDAnalyzer::play_card(int depth, int suit, int rank)
+void DDAnalyzer::play_card(int suit, int rank)
 {
     const int tsx = depth / NUM_PLAYERS;
     TrickState & ts = trick_states.at(tsx);
+
+    if (!ts.holdings[ts.next_to_play].contains(suit, rank))
+        throw std::runtime_error((boost::format(
+                    "Hand does not contain suit=%d rank=%d") % suit % rank).str());
 
     ts.holdings[ts.next_to_play].remove_card(suit, rank);
     ts.legal_moves[ts.next_to_play].remove_card(suit, rank);
@@ -424,10 +428,14 @@ void DDAnalyzer::play_card(int depth, int suit, int rank)
             }
         }
     }
+
+    depth++;
 }
 
-void DDAnalyzer::undo_play(int depth)
+void DDAnalyzer::undo_play()
 {
+    depth--;
+
     const int tsx = depth / NUM_PLAYERS;
     TrickState & ts = trick_states.at(tsx);
 
@@ -440,7 +448,7 @@ void DDAnalyzer::undo_play(int depth)
         ts.current_suit = -1;
 }
 
-int DDAnalyzer::quick_tricks_on_lead(int depth) const
+int DDAnalyzer::quick_tricks_on_lead() const
 {
     const int tsx = depth / NUM_PLAYERS;
     TrickState ts = trick_states.at(tsx);

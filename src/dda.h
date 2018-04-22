@@ -48,18 +48,19 @@ class DDAnalyzer
     DDAnalyzer(const std::string & hand_string, int trump);
     ~DDAnalyzer();
     int analyze(int _total_tricks = 0);
+    void play_card(int suit, int rank);
 
   protected:
-    int alpha_beta(int alpha, int beta, int depth);
-    void compute_legal_moves(int depth);
-    void play_card(int depth, int suit, int rank);
-    void undo_play(int depth);
-    int quick_tricks_on_lead(int depth) const;
+    int alpha_beta(int alpha, int beta);
+    void compute_legal_moves();
+    void undo_play();
+    int quick_tricks_on_lead() const;
     int quick_tricks_single_suit(TrickState & ts, int suit) const;
 
   private:
     int trump = -1;
     int total_tricks = 0;
+    int depth = 0;
     int max_depth = 0;
     std::vector<TrickState> trick_states;
 
@@ -77,5 +78,6 @@ PYBIND11_MODULE(libdda, m) {
     py::class_<DDAnalyzer>(m, "DDAnalyzer")
         .def(py::init<const std::string &>())
         .def(py::init<const std::string &, int>())
-        .def("analyze", &DDAnalyzer::analyze, py::arg("total_tricks") = 0);
+        .def("analyze", &DDAnalyzer::analyze, py::arg("total_tricks") = 0)
+        .def("play_card", &DDAnalyzer::play_card);
 }

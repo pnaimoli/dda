@@ -20,5 +20,16 @@ class FullDeals(unittest.TestCase):
                                 ".AKJ965.543.AQJ9",
                                 1
                                 )
+        dda.play_card(0,12) # Q lead allows declarer to make
         tricks = dda.analyze()
         self.assertEqual(tricks, 0)
+
+        dda = libdda.DDAnalyzer("QJT98.4.QJT9.KT2 "
+                                "AK76543.32.AK2.3 "
+                                "2.QT87.876.87654 "
+                                ".AKJ965.543.AQJ9",
+                                1
+                                )
+        dda.play_card(1,4) # Leading trumps can set the contract
+        tricks = dda.analyze()
+        self.assertEqual(tricks, 1)
