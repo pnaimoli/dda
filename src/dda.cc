@@ -168,6 +168,22 @@ std::ostream & operator<<(std::ostream & os, const TrickState & ts)
     return os;
 }
 
+void TrickState::add_spot(int player, int suit)
+{
+    Hand all_hands;
+    for (const Hand & hand : holdings)
+        all_hands.cards[suit] += hand.cards[suit];
+    for (int rank = 2; rank < std::size(RANK_NAMES); ++rank)
+    {
+        if (all_hands.contains(suit, rank))
+            continue;
+        holdings[player].add_card(suit, rank);
+        return;
+    }
+
+    throw std::runtime_error("No more space to add a spot card");
+}
+
 void TrickState::compress()
 {
     for (int suit = 0; suit < NUM_SUITS; ++suit)
@@ -220,16 +236,7 @@ DDAnalyzer::DDAnalyzer(const std::string & hand_string, int trump) :
             {
                 if (card == 'x' || card == 'X')
                 {
-                    Hand all_hands;
-                    for (const Hand & hand : trick_states[0].holdings)
-                        all_hands.cards[suit] += hand.cards[suit];
-                    for (int rank = 2; rank < std::size(RANK_NAMES); ++rank)
-                    {
-                        if (all_hands.contains(suit, rank))
-                            continue;
-                        trick_states[0].holdings[player].add_card(suit, rank);
-                        break;
-                    }
+                    trick_states[0].add_spot(player, suit);
                     continue;
                 }
                 int rank = (char*)strchr(RANK_NAMES, card) - RANK_NAMES;
@@ -430,6 +437,11 @@ void DDAnalyzer::play_card(int suit, int rank)
     }
 
     depth++;
+}
+
+void DDAnalyzer::give_pitch(int player)
+{
+    trick_states[0].add_spot(player, SUMIT_SUIT);
 }
 
 void DDAnalyzer::undo_play()

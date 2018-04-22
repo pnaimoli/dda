@@ -71,6 +71,13 @@ class SqueezeEndings(unittest.TestCase):
         tricks = dda.analyze()
         self.assertEqual(tricks, 2)
 
+        # Positional simple squeeze also shouldn't work if
+        # we have the SUMIT suit!!!
+        dda = libdda.DDAnalyzer("2..2.2 ..7.45 ..6.36 ..345.")
+        dda.give_pitch(1);
+        tricks = dda.analyze()
+        self.assertEqual(tricks, 2)
+
         # Automatic squeeze
         dda = libdda.DDAnalyzer("2..5.2 ..6.45 .2..36 ..234.")
         tricks = dda.analyze()
@@ -86,6 +93,12 @@ class SqueezeEndings(unittest.TestCase):
         dda = libdda.DDAnalyzer(".A2.K97.A T32.T.T.T AJ4..Q8.2 KQ.98.A2.")
         tricks = dda.analyze()
         self.assertEqual(tricks, 5)
+
+        # Shouldn't work with Sumit suit
+        dda = libdda.DDAnalyzer(".A2.K97.A T32.T.T.T AJ4..Q8.2 KQ.98.A2.")
+        dda.give_pitch(3)
+        tricks = dda.analyze()
+        self.assertEqual(tricks, 4)
 
     def test_guard_squeezes(self):
         #http://www.bridgeguys.com/squeeze/guard_squeeze.html

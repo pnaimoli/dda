@@ -36,6 +36,7 @@ struct TrickState
     int tricks_won = 0;
     int opp_tricks_won = 0;
 
+    void add_spot(int player, int suit);
     void compress();
 
     friend std::ostream & operator<<(std::ostream &, const Hand &);
@@ -49,6 +50,7 @@ class DDAnalyzer
     ~DDAnalyzer();
     int analyze(int _total_tricks = 0);
     void play_card(int suit, int rank);
+    void give_pitch(int player);
 
   protected:
     int alpha_beta(int alpha, int beta);
@@ -79,5 +81,6 @@ PYBIND11_MODULE(libdda, m) {
         .def(py::init<const std::string &>())
         .def(py::init<const std::string &, int>())
         .def("analyze", &DDAnalyzer::analyze, py::arg("total_tricks") = 0)
-        .def("play_card", &DDAnalyzer::play_card);
+        .def("play_card", &DDAnalyzer::play_card)
+        .def("give_pitch", &DDAnalyzer::give_pitch);
 }
