@@ -9,8 +9,9 @@ class FullDeals(unittest.TestCase):
                                 "25K.346.23467.25 "
                                 "TJ.59Q.59JQ.36QA"
                                 )
+        dda.play_card(0,4)
         tricks = dda.analyze()
-        self.assertEqual(tricks, 4)
+        self.assertEqual(tricks, 3) # Can actually make 4NT
 
     def test_fabpedigree(self):
         #https://fabpedigree.com/james/dbldum.htm

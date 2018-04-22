@@ -1,4 +1,5 @@
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 constexpr int NUM_PLAYERS = 4;
@@ -23,6 +24,9 @@ struct Hand
     void keep_only_suit(int suit);
     void remove_adjacents(int suit);
 
+    bool operator ==(const Hand & ts) const;
+    bool operator !=(const Hand & ts) const;
+
     friend std::ostream & operator<<(std::ostream &, const Hand &);
 };
 
@@ -39,7 +43,29 @@ struct TrickState
     void add_spot(int player, int suit);
     void compress();
 
+    bool operator ==(const TrickState & ts) const;
+
     friend std::ostream & operator<<(std::ostream &, const Hand &);
+};
+
+class TranspositionTable
+{
+  public:
+    struct CachedInfo
+    {
+        int value, alpha, beta;
+    };
+
+    void insert(const TrickState & ts, int value);
+    const CachedInfo * find(const TrickState & ts) const;
+    size_t size() const { return tt.size(); }
+
+  private:
+    struct TSHasher
+    {
+        size_t operator()(const TrickState & obj) const;
+    };
+    std::unordered_map<TrickState, CachedInfo, TSHasher> tt;
 };
 
 class DDAnalyzer
@@ -65,6 +91,7 @@ class DDAnalyzer
     int depth = 0;
     int max_depth = 0;
     std::vector<TrickState> trick_states;
+    TranspositionTable tt;
 
     struct Stats
     {

@@ -7,6 +7,10 @@
 
 constexpr char RANK_NAMES[] = "??23456789TJQKA";
 
+////////////////////////////////////////////////////////////////////////////////
+// Hand
+////////////////////////////////////////////////////////////////////////////////
+
 int Hand::smallest(int suit) const
 {
     if (cards[suit] == 0) return -1;
@@ -135,6 +139,16 @@ void Hand::remove_adjacents(int suit)
     }
 }
 
+bool Hand::operator ==(const Hand & ts) const
+{
+    return memcmp(cards, ts.cards, sizeof(cards)) == 0;
+}
+
+bool Hand::operator !=(const Hand & ts) const
+{
+    return !operator==(ts);
+}
+
 std::ostream & operator<<(std::ostream & os, const Hand & hand)
 {
     for (int suit = 0; suit < NUM_SUITS; ++suit)
@@ -151,22 +165,9 @@ std::ostream & operator<<(std::ostream & os, const Hand & hand)
     return os;
 }
 
-std::ostream & operator<<(std::ostream & os, const TrickState & ts)
-{
-    os << "Hands:";
-    for (const Hand & hand : ts.holdings)
-        os << " " << hand;
-    os << " Legal:";
-    for (const Hand & hand : ts.legal_moves)
-        os << " " << hand;
-    os << " Played:";
-    for (auto card : ts.played)
-        os << " (" << card[0] << "," << card[1] << ")";
-    os << " Suit: " << ts.current_suit;
-    os << " To Play: " << ts.next_to_play;
-    os << " Tricks Won: (" << ts.tricks_won << "," << ts.opp_tricks_won << ")";
-    return os;
-}
+////////////////////////////////////////////////////////////////////////////////
+// TrickState
+////////////////////////////////////////////////////////////////////////////////
 
 void TrickState::add_spot(int player, int suit)
 {
@@ -203,6 +204,72 @@ void TrickState::compress()
         }
     }
 }
+
+bool TrickState::operator ==(const TrickState & ts) const
+{
+    if (next_to_play != ts.next_to_play)
+        return false;
+    for (int player = 0; player < NUM_PLAYERS; ++player)
+        if (holdings[player] != ts.holdings[player])
+            return false;
+    return true;
+}
+
+std::ostream & operator<<(std::ostream & os, const TrickState & ts)
+{
+    os << "Hands:";
+    for (const Hand & hand : ts.holdings)
+        os << " " << hand;
+    os << " Legal:";
+    for (const Hand & hand : ts.legal_moves)
+        os << " " << hand;
+    os << " Played:";
+    for (auto card : ts.played)
+        os << " (" << card[0] << "," << card[1] << ")";
+    os << " Suit: " << ts.current_suit;
+    os << " To Play: " << ts.next_to_play;
+    os << " Tricks Won: (" << ts.tricks_won << "," << ts.opp_tricks_won << ")";
+    return os;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// TranspositionTable
+////////////////////////////////////////////////////////////////////////////////
+
+void TranspositionTable::insert(const TrickState & ts, int value)
+{
+    CachedInfo ci;
+    ci.value = value;
+    tt.emplace(ts, ci);
+}
+
+const TranspositionTable::CachedInfo *
+TranspositionTable::find(const TrickState & ts) const
+{
+    auto it = tt.find(ts);
+    if (it == tt.end())
+        return nullptr;
+    else
+        return &it->second;
+}
+
+size_t TranspositionTable::TSHasher::operator()(const TrickState & obj) const
+{
+    size_t hash = 0;
+    for (const Hand & h : obj.holdings)
+    {
+        for (const uint16_t cards : h.cards)
+        {
+            hash += cards;
+        }
+    }
+    hash *= (obj.next_to_play + 1);
+    return hash;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// DDAnalyzer
+////////////////////////////////////////////////////////////////////////////////
 
 DDAnalyzer::DDAnalyzer(const std::string & hand_string) :
     DDAnalyzer(hand_string, -1)
@@ -254,7 +321,9 @@ DDAnalyzer::DDAnalyzer(const std::string & hand_string, int trump) :
 
 DDAnalyzer::~DDAnalyzer()
 {
-    std::cout << "Stats - ab_calls=" << stats.ab_calls << std::endl;
+    std::cout << "Stats=ab_calls=" << stats.ab_calls <<
+                 "=tt_size=" << tt.size() <<
+                 std::endl;
 }
 
 int DDAnalyzer::analyze(int _total_tricks/* = 0*/)
@@ -278,6 +347,17 @@ int DDAnalyzer::alpha_beta(int alpha, int beta)
 
     const int tsx = depth / NUM_PLAYERS;
     TrickState & ts = trick_states.at(tsx);
+
+    // Check out transposition table here
+    if (ts.current_suit < 0)
+    {
+        const TranspositionTable::CachedInfo * ci = tt.find(ts);
+        if (ci != nullptr)
+        {
+            return ci->value;
+        }
+    }
+
     compute_legal_moves();
 //    std::cout << std::string(depth, ' ') <<
 //        "A:" << alpha << " B:" << beta << " " << ts << std::endl;
@@ -320,6 +400,8 @@ int DDAnalyzer::alpha_beta(int alpha, int beta)
                 undo_play();
             }
         }
+        if (ts.current_suit < 0)
+            tt.insert(ts, alpha);
         return alpha;
     } else
     {
@@ -335,6 +417,8 @@ int DDAnalyzer::alpha_beta(int alpha, int beta)
                 undo_play();
             }
         }
+        if (ts.current_suit < 0)
+            tt.insert(ts, beta);
         return beta;
     }
 }
