@@ -76,11 +76,8 @@ int Hand::length() const
 
 int Hand::length(int suit) const
 {
-    int num = 0;
-    for (uint16_t tmp = cards[suit]; tmp; tmp >>= 1)
-        if (tmp & 1)
-            ++num;
-    return num;
+    // https://graphics.stanford.edu/~seander/bithacks.html#CountBitsSet64
+    return (cards[suit] * 0x200040008001ULL & 0x111111111111111ULL) % 0xf;
 }
 
 bool Hand::contains(int suit, int rank) const
@@ -614,9 +611,8 @@ int DDAnalyzer::quick_tricks_single_suit(TrickState & ts, int suit) const
             bool can_trump = false;
             for (int opponent : {lho, rho})
             {
-                if (top_card_per_player[opponent] >= 0)
-                    continue;
-                if (ts.holdings[opponent].smallest(trump) >= 0)
+                if (top_card_per_player[opponent] < 0 &&
+                    !ts.holdings[opponent].empty(trump))
                     can_trump = true;
             }
             if (can_trump)
@@ -643,7 +639,9 @@ int DDAnalyzer::quick_tricks_single_suit(TrickState & ts, int suit) const
         {
             if (player == who_plays_high)
                 continue;
-            ts.holdings[player].remove_card(suit, smallest_card_per_player[player]);
+            const int card = smallest_card_per_player[player];
+            if (card >= 0)
+                ts.holdings[player].remove_card(suit, card);
         }
     }
 
