@@ -3,6 +3,7 @@
 
 constexpr int NUM_PLAYERS = 4;
 constexpr int NUM_SUITS = 5;
+constexpr int SUMIT_SUIT = NUM_SUITS - 1;
 
 struct Hand
 {
@@ -45,6 +46,7 @@ class DDAnalyzer
   public:
     DDAnalyzer(const std::string & hand_string);
     DDAnalyzer(const std::string & hand_string, int trump);
+    ~DDAnalyzer();
     int analyze(int _total_tricks = 0);
 
   protected:
@@ -52,12 +54,19 @@ class DDAnalyzer
     void compute_legal_moves(int depth);
     void play_card(int depth, int suit, int rank);
     void undo_play(int depth);
+    int quick_tricks_on_lead(int depth) const;
+    int quick_tricks_single_suit(TrickState & ts, int suit) const;
 
   private:
     int trump = -1;
     int total_tricks = 0;
     int max_depth = 0;
     std::vector<TrickState> trick_states;
+
+    struct Stats
+    {
+        int ab_calls = 0;
+    } stats;
 };
 
 #include <pybind11/pybind11.h>

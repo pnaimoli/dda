@@ -205,7 +205,7 @@ DDAnalyzer::DDAnalyzer(const std::string & hand_string, int trump) :
     std::vector<std::string> hands;
     boost::split(hands, new_str, boost::is_space(), boost::token_compress_on);
 
-    if (hands.size() != 4)
+    if (hands.size() != NUM_PLAYERS)
         throw std::runtime_error("Hand string must contain 4 hands separated "
                                  "by whitespace");
 
@@ -245,6 +245,11 @@ DDAnalyzer::DDAnalyzer(const std::string & hand_string, int trump) :
     trick_states[0].compress();
 }
 
+DDAnalyzer::~DDAnalyzer()
+{
+    std::cout << "Stats - ab_calls=" << stats.ab_calls << std::endl;
+}
+
 int DDAnalyzer::analyze(int _total_tricks/* = 0*/)
 {
     total_tricks = _total_tricks;
@@ -262,7 +267,9 @@ int DDAnalyzer::analyze(int _total_tricks/* = 0*/)
 
 int DDAnalyzer::alpha_beta(int alpha, int beta, int depth)
 {
-    const int tsx = depth / 4;
+    stats.ab_calls++;
+
+    const int tsx = depth / NUM_PLAYERS;
     TrickState & ts = trick_states.at(tsx);
     compute_legal_moves(depth);
 //    std::cout << std::string(depth, ' ') <<
@@ -272,51 +279,53 @@ int DDAnalyzer::alpha_beta(int alpha, int beta, int depth)
     if (depth == max_depth)
         return ts.tricks_won;
 
+    const int side = ts.next_to_play % 2;
+
+    const int tricks_remaining = total_tricks -
+                                 (ts.tricks_won + ts.opp_tricks_won);
+
+    int quick_tricks[2] = {0, 0};
+    if (ts.current_suit < 0)
+    {
+        quick_tricks[side] = quick_tricks_on_lead(depth);
+        quick_tricks[side] = std::min(tricks_remaining, quick_tricks[side]);
+    }
+
+    // I'm not 100% sure about these lines
+    beta = std::min(beta, ts.tricks_won + tricks_remaining - quick_tricks[1]);
+    alpha = std::max(alpha, ts.tricks_won + quick_tricks[0]);
+    if (alpha >= beta)
+        return beta;
+
     // If the leading team is playing, we're trying to maximize the
     // number of tricks
-    if (ts.next_to_play % 2 == 0)
+    if (side == 0)
     {
-        int v = alpha;
         for (int suit = 0; suit < NUM_SUITS; ++suit)
         {
-            while (true)
+            while (alpha < beta)
             {
-                int rank = ts.legal_moves[ts.next_to_play].smallest(suit);
+                int rank = ts.legal_moves[ts.next_to_play].highest(suit);
                 if (rank < 0)
                     break;
                 play_card(depth, suit, rank);
-                v = alpha_beta(alpha, beta, depth+1);
+                alpha = std::max(alpha, alpha_beta(alpha, beta, depth+1));
                 undo_play(depth);
-                alpha = std::max(alpha, v);
-                if (alpha == beta)
-                {
-                    return alpha;
-                }
-                if (alpha > beta)
-                    return beta;
             }
         }
         return alpha;
     } else
     {
-        int v = beta;
         for (int suit = 0; suit < NUM_SUITS; ++suit)
         {
-            while (true)
+            while (alpha < beta)
             {
-                int rank = ts.legal_moves[ts.next_to_play].smallest(suit);
+                int rank = ts.legal_moves[ts.next_to_play].highest(suit);
                 if (rank < 0)
                     break;
                 play_card(depth, suit, rank);
-                v = alpha_beta(alpha, beta, depth+1);
+                beta = std::min(beta, alpha_beta(alpha, beta, depth+1));
                 undo_play(depth);
-                beta = std::min(beta, v);
-                if (alpha == beta)
-                {
-                    return alpha;
-                }
-                if (alpha > beta)
-                    return beta;
             }
         }
         return beta;
@@ -325,14 +334,14 @@ int DDAnalyzer::alpha_beta(int alpha, int beta, int depth)
 
 void DDAnalyzer::compute_legal_moves(int depth)
 {
-    const int tsx = depth / 4;
+    const int tsx = depth / NUM_PLAYERS;
     TrickState & ts = trick_states.at(tsx);
     Hand & lm = ts.legal_moves[ts.next_to_play];
     lm = ts.holdings[ts.next_to_play];
     if (ts.current_suit < 0)
     {
         // Cannot lead the Sumit suit!
-        lm.remove_suit(4);
+        lm.remove_suit(SUMIT_SUIT);
         for (int suit = 0; suit < NUM_SUITS; ++suit)
             lm.remove_adjacents(suit);
     } else if (!lm.empty(ts.current_suit))
@@ -349,7 +358,7 @@ void DDAnalyzer::compute_legal_moves(int depth)
 
 void DDAnalyzer::play_card(int depth, int suit, int rank)
 {
-    const int tsx = depth / 4;
+    const int tsx = depth / NUM_PLAYERS;
     TrickState & ts = trick_states.at(tsx);
 
     ts.holdings[ts.next_to_play].remove_card(suit, rank);
@@ -358,9 +367,9 @@ void DDAnalyzer::play_card(int depth, int suit, int rank)
     ts.played[ts.next_to_play][1] = suit;
     if (ts.current_suit < 0)
         ts.current_suit = suit;
-    ts.next_to_play = (ts.next_to_play + 1) % 4;
+    ts.next_to_play = (ts.next_to_play + 1) % NUM_PLAYERS;
 
-    if (depth % 4 == 3)
+    if (depth % NUM_PLAYERS == 3)
     {
         int winning_value = -1;
         int winner = -1;
@@ -399,7 +408,7 @@ void DDAnalyzer::play_card(int depth, int suit, int rank)
 
         // Compress the board downward.  We start on the highest cards first
         // so we don't double (triple! etc) compress.
-        std::array<int, 4> idx = {{0, 1, 2, 3}};
+        std::array<int, NUM_PLAYERS> idx = {{0, 1, 2, 3}};
         std::sort(idx.rbegin(), idx.rend(),
              [&ts](int i1, int i2)
                  { return ts.played[i1][0] < ts.played[i2][0];});
@@ -419,14 +428,128 @@ void DDAnalyzer::play_card(int depth, int suit, int rank)
 
 void DDAnalyzer::undo_play(int depth)
 {
-    const int tsx = depth / 4;
+    const int tsx = depth / NUM_PLAYERS;
     TrickState & ts = trick_states.at(tsx);
 
-    ts.next_to_play = (ts.next_to_play + 3) % 4;
+    ts.next_to_play = (ts.next_to_play + 3) % NUM_PLAYERS;
     ts.holdings[ts.next_to_play].add_card(
             ts.played[ts.next_to_play][1],
             ts.played[ts.next_to_play][0]);
     ts.played[ts.next_to_play][0] = ts.played[ts.next_to_play][1] = 0;
-    if (depth % 4 == 0)
+    if (depth % NUM_PLAYERS == 0)
         ts.current_suit = -1;
+}
+
+int DDAnalyzer::quick_tricks_on_lead(int depth) const
+{
+    const int tsx = depth / NUM_PLAYERS;
+    TrickState ts = trick_states.at(tsx);
+
+    int quick_tricks = 0;
+    if (trump > 0)
+        quick_tricks += quick_tricks_single_suit(ts, trump);
+
+    for (int suit = 0; suit < NUM_SUITS; ++suit)
+    {
+        // Ignore the Sumit suit and trump, because we've already been there
+        if (suit == SUMIT_SUIT || suit == trump)
+            continue;
+
+        quick_tricks += quick_tricks_single_suit(ts, suit);
+    }
+
+    return quick_tricks;
+}
+
+int DDAnalyzer::quick_tricks_single_suit(TrickState & ts, int suit) const
+{
+    const int us = ts.next_to_play;
+    const int lho = (ts.next_to_play + 1) % NUM_PLAYERS;
+    const int cho = (ts.next_to_play + 2) % NUM_PLAYERS;
+    const int rho = (ts.next_to_play + 3) % NUM_PLAYERS;
+
+    // Suit, Our card, Partner's card
+    int quick_trick_moves[26][3] = {{-1,-1,-1}};
+    int cur_qt = 0;
+
+    while (true)
+    {
+        const int opponents_top_card = std::max(
+                ts.holdings[lho].highest(suit),
+                ts.holdings[rho].highest(suit));
+
+        const bool we_are_shorter = ts.holdings[us].length(suit) <
+                                    ts.holdings[cho].length(suit);
+        const int shorter_hand = we_are_shorter ? us : cho;
+        const int longer_hand = (shorter_hand + 2) % NUM_PLAYERS;
+
+        const int top_card_per_player[] = {ts.holdings[0].highest(suit),
+                                           ts.holdings[1].highest(suit),
+                                           ts.holdings[2].highest(suit),
+                                           ts.holdings[3].highest(suit)
+                                           };
+
+        const int smallest_card_per_player[] = {ts.holdings[0].smallest(suit),
+                                                ts.holdings[1].smallest(suit),
+                                                ts.holdings[2].smallest(suit),
+                                                ts.holdings[3].smallest(suit)
+                                                };
+
+        int who_plays_high = -1;
+        if (top_card_per_player[shorter_hand] > opponents_top_card)
+            who_plays_high = shorter_hand;
+        else if (top_card_per_player[longer_hand] > opponents_top_card)
+            who_plays_high = longer_hand;
+
+        if (who_plays_high == -1)
+            break;
+
+        // Can opponents trump?
+        if (trump > 0)
+        {
+            bool can_trump = false;
+            for (int opponent : {lho, rho})
+            {
+                if (top_card_per_player[opponent] >= 0)
+                    continue;
+                if (ts.holdings[opponent].smallest(trump) >= 0)
+                    can_trump = true;
+            }
+            if (can_trump)
+                break;
+        }
+
+        if (who_plays_high == us)
+        {
+            quick_trick_moves[cur_qt][0] = suit;
+            quick_trick_moves[cur_qt][1] = top_card_per_player[us];
+            quick_trick_moves[cur_qt][2] = smallest_card_per_player[cho];
+            ts.holdings[us].remove_card(suit, top_card_per_player[us]);
+        } else
+        {
+            quick_trick_moves[cur_qt][0] = suit;
+            quick_trick_moves[cur_qt][1] = smallest_card_per_player[us];
+            quick_trick_moves[cur_qt][2] = top_card_per_player[cho];
+            ts.holdings[cho].remove_card(suit, top_card_per_player[cho]);
+        }
+
+        cur_qt++;
+
+        for (int player = 0; player < NUM_PLAYERS; ++player)
+        {
+            if (player == who_plays_high)
+                continue;
+            ts.holdings[player].remove_card(suit, smallest_card_per_player[player]);
+        }
+    }
+
+    // For now, don't do anything intelligent with entries
+    int quick_tricks = 0;
+    for (int i = 0; i < cur_qt; ++i)
+    {
+        if (quick_trick_moves[i][1] >= 0)
+            quick_tricks++;
+    }
+
+    return quick_tricks;
 }
