@@ -296,8 +296,9 @@ DDAnalyzer::DDAnalyzer(const std::string & hand_string, int trump) :
 
 DDAnalyzer::~DDAnalyzer()
 {
-    std::cout << "Stats=ab_calls=" << stats.ab_calls <<
-                 std::endl;
+//    std::cout << "Stats=ab_calls=" << stats.ab_calls <<
+//                 "=tt_size=" << tt.size() <<
+//                 std::endl;
 }
 
 bool DDAnalyzer::can_make(int target)
