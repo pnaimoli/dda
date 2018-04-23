@@ -1,2 +1,0 @@
-# Remove trailing \nTries: line and unbuffer everything
-PYTHONPATH=redeal python3 -u -B -m redeal ehas.py | awk '/^(|Tries:.*)$/ {nlstack=nlstack "\n";next;} {printf "%s",nlstack; nlstack=""; print; fflush("/dev/stdout")}'
