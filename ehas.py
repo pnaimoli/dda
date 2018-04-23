@@ -25,10 +25,11 @@ def accept(deal):
     board_string = " ".join([hand_string(hand) for hand in hands])
 
     dda = libdda.DDAnalyzer(board_string)
+
+    # Can we defeat the contract with some extra cards?
     dda.give_pitch(0)
     dda.give_pitch(2)
-
-    if dda.analyze(4) != 4:
+    if dda.can_make(5):
         global FOUND_SQUEEZE
         print()
         print("[Board \"{}\"]".format(FOUND_SQUEEZE + 1))
