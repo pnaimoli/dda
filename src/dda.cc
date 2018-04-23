@@ -300,12 +300,7 @@ DDAnalyzer::~DDAnalyzer()
                  std::endl;
 }
 
-int DDAnalyzer::analyze(int _total_tricks/* = 0*/)
-{
-    return alpha_beta(0, total_tricks);
-}
-
-int DDAnalyzer::alpha_beta(int alpha, int beta)
+bool DDAnalyzer::can_make(int target)
 {
     stats.ab_calls++;
 
@@ -314,63 +309,112 @@ int DDAnalyzer::alpha_beta(int alpha, int beta)
 
     compute_legal_moves();
 //    std::cout << std::string(depth, ' ') <<
-//        "A:" << alpha << " B:" << beta << " " << ts << std::endl;
+//        "T:" << target << " " << ts << std::endl;
 
     // Terminal state!
     if (depth == max_depth)
-        return ts.tricks_won;
+        return ts.tricks_won >= target;
 
     const int side = ts.next_to_play % 2;
+    std::pair<TTMap::iterator, bool> ret;
 
-    const int tricks_remaining = total_tricks -
-                                 (ts.tricks_won + ts.opp_tricks_won);
-
-    int quick_tricks[2] = {0, 0};
+    int value;
     if (ts.current_suit < 0)
     {
-        quick_tricks[side] = quick_tricks_on_lead();
-        quick_tricks[side] = std::min(tricks_remaining, quick_tricks[side]);
+        // On the first trick, we try a few things like quick tricks/transtable.
+        const int tricks_remaining = total_tricks -
+                                     (ts.tricks_won + ts.opp_tricks_won);
+        int additional_trick_bounds[2] = {0, tricks_remaining};
+
+        ret = tt.emplace(ts, std::make_pair(0, tricks_remaining));
+        if (!ret.second)
+        {
+            additional_trick_bounds[0] = ret.first->second.first;
+            additional_trick_bounds[1] = ret.first->second.second;
+        } else {
+//            if (side == 0)
+//                additional_trick_bounds[0] = quick_tricks_on_lead();
+//            else
+//                additional_trick_bounds[1] -= quick_tricks_on_lead();
+        }
+
+        if (ts.tricks_won + additional_trick_bounds[0] >= target)
+        {
+            value = true;
+            goto search_exit;
+        } else if (ts.tricks_won + additional_trick_bounds[1] < target)
+        {
+            value = false;
+            goto search_exit;
+        }
     }
 
-    // I'm not 100% sure about these lines
-    beta = std::min(beta, ts.tricks_won + tricks_remaining - quick_tricks[1]);
-    alpha = std::max(alpha, ts.tricks_won + quick_tricks[0]);
-    if (alpha >= beta)
-        return beta;
-
-    // If the leading team is playing, we're trying to maximize the
-    // number of tricks
     if (side == 0)
     {
+        value = false;
         for (int suit = 0; suit < NUM_SUITS; ++suit)
         {
-            while (alpha < beta)
+            while (true)
             {
-                int rank = ts.legal_moves[ts.next_to_play].highest(suit);
+                const int rank = ts.legal_moves[ts.next_to_play].highest(suit);
                 if (rank < 0)
                     break;
                 play_card(suit, rank);
-                alpha = std::max(alpha, alpha_beta(alpha, beta));
+                value = can_make(target);
                 undo_play();
+                if (value)
+                    goto search_exit;
             }
         }
-        return alpha;
     } else
     {
+        value = true;
         for (int suit = 0; suit < NUM_SUITS; ++suit)
         {
-            while (alpha < beta)
+            while (true)
             {
-                int rank = ts.legal_moves[ts.next_to_play].highest(suit);
+                const int rank = ts.legal_moves[ts.next_to_play].highest(suit);
                 if (rank < 0)
                     break;
                 play_card(suit, rank);
-                beta = std::min(beta, alpha_beta(alpha, beta));
+                value = can_make(target);
                 undo_play();
+                if (value == false)
+                    goto search_exit;
             }
         }
-        return beta;
     }
+
+search_exit:
+//    std::cout << std::string(depth, ' ') <<
+//        "Returning:" << value << std::endl;
+    if (ts.current_suit < 0)
+    {
+        // Update our transposition table
+        if (value)
+            ret.first->second.first = std::max(ret.first->second.first,
+                                               target - ts.tricks_won);
+        else
+            ret.first->second.second = std::min(ret.first->second.second,
+                                                target - ts.tricks_won - 1);
+    }
+    return value;
+}
+
+int DDAnalyzer::analyze(int target_guess /*= 0*/)
+{
+    // Increment/decrement until we've hit the cutoff
+    int alpha = 0;
+    int beta = total_tricks;
+    do {
+        if (target_guess == alpha)
+            target_guess++;
+        if (can_make(target_guess))
+            alpha = target_guess;
+        else
+            target_guess = beta = target_guess - 1;
+    } while (alpha < beta);
+    return target_guess;
 }
 
 void DDAnalyzer::compute_legal_moves()
@@ -607,4 +651,12 @@ int DDAnalyzer::quick_tricks_single_suit(TrickState & ts, int suit) const
     }
 
     return quick_tricks;
+}
+
+size_t DDAnalyzer::TSHasher::operator()(const TrickState & obj) const
+{
+    std::size_t seed = obj.next_to_play;
+    for (const Hand & h : obj.holdings)
+        boost::hash_combine(seed, h.hash_value());
+    return seed;
 }

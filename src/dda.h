@@ -55,7 +55,8 @@ class DDAnalyzer
     DDAnalyzer(const std::string & hand_string);
     DDAnalyzer(const std::string & hand_string, int trump);
     ~DDAnalyzer();
-    int analyze(int _total_tricks = 0);
+    bool can_make(int target);
+    int analyze(int target_guess = 0);
     void play_card(int suit, int rank);
     void give_pitch(int player);
 
@@ -73,6 +74,13 @@ class DDAnalyzer
     int max_depth = 0;
     std::vector<TrickState> trick_states;
 
+    struct TSHasher
+    {
+        size_t operator()(const TrickState & obj) const;
+    };
+    typedef std::unordered_map<TrickState, std::pair<int, int>, TSHasher> TTMap;
+    TTMap tt;
+
     struct Stats
     {
         int ab_calls = 0;
@@ -87,7 +95,8 @@ PYBIND11_MODULE(libdda, m) {
     py::class_<DDAnalyzer>(m, "DDAnalyzer")
         .def(py::init<const std::string &>())
         .def(py::init<const std::string &, int>())
-        .def("analyze", &DDAnalyzer::analyze, py::arg("total_tricks") = 0)
+        .def("can_make", &DDAnalyzer::can_make)
+        .def("analyze", &DDAnalyzer::analyze, py::arg("target_guess") = 0)
         .def("play_card", &DDAnalyzer::play_card)
         .def("give_pitch", &DDAnalyzer::give_pitch);
 }

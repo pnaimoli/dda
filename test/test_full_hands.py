@@ -10,11 +10,11 @@ class FullDeals(unittest.TestCase):
                                 "TJ.59Q.59JQ.36QA"
                                 )
         dda.play_card(0,4)
-        tricks = dda.analyze()
-        self.assertEqual(tricks, 3) # Can actually make 4NT
+        self.assertEqual(dda.analyze(3), 3) # Can actually make 4NT
 
     def test_fabpedigree(self):
         #https://fabpedigree.com/james/dbldum.htm
+        # The original problem
         dda = libdda.DDAnalyzer("QJT98.4.QJT9.KT2 "
                                 "AK76543.32.AK2.3 "
                                 "2.QT87.876.87654 "
@@ -22,9 +22,9 @@ class FullDeals(unittest.TestCase):
                                 1
                                 )
         dda.play_card(0,12) # Q lead allows declarer to make
-        tricks = dda.analyze()
-        self.assertEqual(tricks, 0)
+        self.assertEqual(dda.analyze(0), 0)
 
+        # A different lead can set
         dda = libdda.DDAnalyzer("QJT98.4.QJT9.KT2 "
                                 "AK76543.32.AK2.3 "
                                 "2.QT87.876.87654 "
@@ -32,5 +32,17 @@ class FullDeals(unittest.TestCase):
                                 1
                                 )
         dda.play_card(1,4) # Leading trumps can set the contract
-        tricks = dda.analyze()
-        self.assertEqual(tricks, 1)
+        self.assertEqual(dda.can_make(1), True)
+        self.assertEqual(dda.can_make(2), False)
+        self.assertEqual(dda.analyze(1), 1)
+
+        # What if we give everybody a pitch?
+        dda = libdda.DDAnalyzer("QJT98.4.QJT9.KT2 "
+                                "AK76543.32.AK2.3 "
+                                "2.QT87.876.87654 "
+                                ".AKJ965.543.AQJ9",
+                                1
+                                )
+        dda.play_card(0,12) # Q lead allows declarer to make
+        dda.give_pitch(0)
+        self.assertEqual(dda.analyze(0), 1)
