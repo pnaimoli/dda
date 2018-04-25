@@ -46,3 +46,26 @@ class FullDeals(unittest.TestCase):
         dda.play_card(0,12) # Q lead allows declarer to make
         dda.give_pitch(0)
         self.assertEqual(dda.analyze(0), 1)
+
+    def test_simple_squeeze(self):
+        #http://www.pittsburghbridge.org/JimmySez/JRKLess09.pdf
+        # Page 4
+
+        dda = libdda.DDAnalyzer("KQT74.KQ93.53.T7 "
+                                "AJ.AJ4.T964.J642 "
+                                "98653.T862.7.985 "
+                                "2.75.AKQJ82.AKQ3",
+                                2
+                                )
+        dda.play_card(1,13) # K
+        self.assertEqual(dda.analyze(0), 0)
+
+        dda = libdda.DDAnalyzer("KQT74.KQ93.53.T7 "
+                                "AJ.AJ4.T964.J642 "
+                                "98653.T862.7.985 "
+                                "2.75.AKQJ82.AKQ3",
+                                2
+                                )
+        dda.play_card(1,13) # K
+        dda.give_pitch(0)
+        self.assertEqual(dda.analyze(0), 1)
