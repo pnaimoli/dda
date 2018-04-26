@@ -158,9 +158,9 @@ def do(deal):
         redeal.Suit.__str__ = lambda self: self.name
         Deal.set_print_only((redeal.Seat.S, redeal.Seat.W, redeal.Seat.N))
         hand_string = format(deal, "").replace(" ", ",")
-        print("qx|o1|md|1{}|rh||ah|Board {}|sv|0|"
+        print("qx|o{b_num}|md|1{}|rh||ah|Board {b_num}|sv|0|"
               "mb|6N|mb|p|mb|p|mb|p|pg||pc|{}|".format(
-              hand_string, NUM_FOUND, lead.suit.name + str(lead.rank)))
+              hand_string, lead.suit.name + str(lead.rank), b_num=NUM_FOUND))
 
 def final(n_tries):
     print("% Found: {} Failed: {}".format(NUM_FOUND, NUM_FAILED))

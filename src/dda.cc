@@ -333,10 +333,10 @@ bool DDAnalyzer::can_make(int target)
             additional_trick_bounds[0] = ret.first->second.first;
             additional_trick_bounds[1] = ret.first->second.second;
         } else {
-//            if (side == 0)
-//                additional_trick_bounds[0] = quick_tricks_on_lead();
-//            else
-//                additional_trick_bounds[1] -= quick_tricks_on_lead();
+            if (side == 0)
+                additional_trick_bounds[0] = quick_tricks_on_lead();
+            else
+                additional_trick_bounds[1] -= quick_tricks_on_lead();
         }
 
         if (ts.tricks_won + additional_trick_bounds[0] >= target)
