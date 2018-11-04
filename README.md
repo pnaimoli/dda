@@ -15,7 +15,8 @@ hands where a squeeze is **required** in order to make 3NT.
 
 ```
 make -C src
-cd redeal/dds/src && make -f Makefiles/Makefile_Mac_clang_shared && cp libdds.so ../../
+cd redeal/dds && git checkout 9c554cc966d341958df45de2790e7737d57406e8
+cd src && make -f Makefiles/Makefile_Mac_clang_shared && cp libdds.so ../../
 ```
 
 ## Running
